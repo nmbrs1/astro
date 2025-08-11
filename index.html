@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Galaxy List</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- fitsjs library -->
+<!--   <script src="https://cdn.jsdelivr.net/npm/fitsjs@latest/dist/fits.min.js"></script> -->
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">Galaxy List</div>
+    <div class="info">Hosted: GitHub Pages — Place JPEG under <code>/jpeg/</code></div>
+  </header>
+
+  <main class="container">
+    <aside class="sidebar" id="sidebar">
+      <div class="folder-controls">
+        <button id="refreshBtn">Refresh list</button>
+        <input id="filterInput" placeholder="Filter folders..." />
+      </div>
+      <ul id="folders" class="folder-list" aria-label="Folders"></ul>
+    </aside>
+
+    <section class="content">
+      <div class="breadcrumb" id="breadcrumb">Home</div>
+
+      <div class="files-area">
+        <ul id="files" class="file-list" aria-label="Files"></ul>
+
+        <div class="viewer-area">
+          <div id="viewerControls" class="viewer-controls">
+            <span id="fileInfo">No file loaded</span>
+          </div>
+          <!-- Canvas -->
+          <canvas id="fitsCanvas" style="width:100%; height:auto; background:black;"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
