@@ -1,353 +1,330 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Astrophotography Gallery</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #111827; /* Dark blue-gray background */
-            color: #E5E7EB; /* Light gray text */
-        }
-        /* Style for the modal */
-        .modal {
-            transition: opacity 0.25s ease;
-        }
-        .modal-content {
-            transition: transform 0.25s ease;
-        }
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #1F2937;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #4B5563;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #6B7280;
-        }
-        .folder-icon {
-            width: 4rem; /* 64px */
-            height: 4rem; /* 64px */
-        }
-        .file-icon {
-            width: 6rem; /* 96px */
-            height: 6rem; /* 96px */
-        }
-    </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Astro File Explorer</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#0f1720; --muted:#9aa6b2; --accent:#66d9ef;
+    --card:#0c1116; --glass: rgba(255,255,255,0.03);
+  }
+  html,body{height:100%; margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial; background:var(--bg); color:#e6eef6;}
+  .app{display:flex; height:100vh; gap:12px; padding:12px; box-sizing:border-box;}
+  /* Sidebar */
+  .sidebar{width:260px; background:linear-gradient(180deg,#07101a 0%, #0b141a 100%); border-radius:10px; padding:10px; box-shadow: 0 6px 18px rgba(0,0,0,0.6); display:flex; flex-direction:column;}
+  .brand{font-weight:700; color:var(--accent); margin:6px 8px; font-size:14px;}
+  .search{margin:8px; display:flex;}
+  .search input{flex:1; background:transparent; border:1px solid rgba(255,255,255,0.04); color:var(--muted); padding:8px; border-radius:6px; outline:none;}
+  .folders{overflow:auto; padding:6px; margin-top:6px;}
+  .folder{display:flex; align-items:center; gap:8px; padding:8px; border-radius:6px; cursor:pointer; user-select:none;}
+  .folder:hover{background:var(--glass);}
+  .folder.active{background:linear-gradient(90deg, rgba(102,217,239,0.08), rgba(102,217,239,0.02)); outline:1px solid rgba(102,217,239,0.06);}
+  .icondir{width:28px;height:28px;background:linear-gradient(180deg,#123 0%,#145 100%); border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:700; color:#cfeff6;}
+  /* Main */
+  .main{flex:1; display:flex; gap:12px;}
+  .files-panel{flex:1; background:var(--panel); border-radius:10px; padding:12px; overflow:auto;}
+  .files-header{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+  .breadcrumbs{color:var(--muted); font-size:13px;}
+  .grid{display:grid; grid-template-columns: repeat(auto-fill,minmax(180px,1fr)); gap:12px;}
+  .file-card{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); padding:8px; border-radius:8px; display:flex; flex-direction:column; gap:8px; cursor:pointer; transition:transform .08s;}
+  .file-card:hover{transform:translateY(-4px);}
+  .thumb{height:120px; border-radius:6px; background:#000; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative;}
+  .thumb img{width:100%; height:100%; object-fit:cover;}
+  .meta{font-size:13px; color:var(--muted); display:flex; justify-content:space-between; align-items:center;}
+  .name{font-weight:600; color:#dfefff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  /* Preview */
+  .preview{width:480px; max-width:45%; background:linear-gradient(180deg,#071017,#071018); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:10px; box-shadow:0 8px 30px rgba(0,0,0,0.6);}
+  .viewer{flex:1; background:#000; border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative;}
+  .viewer img{max-width:100%; max-height:100%; transform-origin:center center; transition:transform .12s linear;}
+  .controls{display:flex; gap:8px; align-items:center; justify-content:flex-end;}
+  .btn{background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.02); padding:8px 10px; border-radius:6px; color:var(--muted); cursor:pointer; font-size:13px;}
+  .muted{color:var(--muted); font-size:13px;}
+  .small{font-size:12px; color:var(--muted);}
+  /* Responsive */
+  @media (max-width:1000px){
+    .preview{display:none;}
+    .sidebar{width:210px;}
+  }
+</style>
 </head>
-<body class="antialiased">
+<body>
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="brand">Astro Explorer</div>
+    <div class="search"><input id="folderFilter" placeholder="Filter folders (type 'M', 'NGC', etc.)" /></div>
+    <div class="folders" id="folders" aria-live="polite"></div>
+    <div style="padding:8px;color:var(--muted);font-size:12px;">Auto-detects GitHub repo from URL. Uses GitHub API (public).</div>
+  </aside>
 
-    <div id="app" class="container mx-auto px-4 py-8">
-        <!-- Header -->
-        <header class="mb-8">
-            <h1 class="text-4xl font-bold text-white text-center tracking-wider">Astro Gallery</h1>
-            <p class="text-center text-lg text-gray-400 mt-2">A file-explorer style gallery of deep-sky objects.</p>
-            <div id="breadcrumbs" class="text-lg text-gray-400 mt-6 font-mono bg-gray-900/50 p-3 rounded-lg">
-                <span class="cursor-pointer hover:text-white" onclick="renderHomeView()">/</span>
-            </div>
-        </header>
+  <main class="main">
+    <section class="files-panel">
+      <div class="files-header">
+        <div class="breadcrumbs" id="breadcrumbs">/</div>
+        <div class="muted" id="status">loading...</div>
+      </div>
+      <div class="grid" id="grid"></div>
+    </section>
 
-        <!-- Main Content Area -->
-        <main id="file-explorer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6">
-            <!-- Content will be injected by JavaScript -->
-        </main>
-
-        <!-- Loading Spinner -->
-        <div id="loader" class="text-center py-20 hidden">
-            <svg class="animate-spin h-10 w-10 text-white mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p class="mt-4 text-gray-400">Fetching images from repository...</p>
+    <aside class="preview" id="previewPanel" aria-hidden="true">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div id="previewTitle" style="font-weight:700;color:#dff8ff;"></div>
+          <div class="small" id="previewDate"></div>
         </div>
-
-        <!-- Error Message -->
-        <div id="error-message" class="text-center py-20 hidden bg-red-900/20 border border-red-500 rounded-lg p-6">
-            <h3 class="text-2xl text-red-400">Error</h3>
-            <p id="error-text" class="mt-2 text-red-300"></p>
-            <p class="mt-4 text-sm text-gray-400">Please check your repository settings and file locations.</p>
+        <div class="controls">
+          <button class="btn" id="fitBtn">Fit</button>
+          <button class="btn" id="zoomIn">Zoom +</button>
+          <button class="btn" id="zoomOut">Zoom −</button>
+          <button class="btn" id="prevBtn">←</button>
+          <button class="btn" id="nextBtn">→</button>
+          <button class="btn" id="openRaw">Open raw</button>
         </div>
-    </div>
+      </div>
+      <div class="viewer" id="viewer"><div class="muted">Select an image to preview</div></div>
+      <div class="small" id="footerNote">Navigate folders on the left • images load lazily</div>
+    </aside>
+  </main>
+</div>
 
-    <!-- Image Modal -->
-    <div id="image-modal" class="modal fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50 opacity-0 pointer-events-none">
-        <div class="modal-content transform scale-95 max-w-4xl max-h-full w-full bg-gray-900 rounded-xl shadow-2xl overflow-hidden flex flex-col">
-            <div id="modal-header" class="p-4 border-b border-gray-700 text-lg font-semibold text-white">
-                <!-- Image name here -->
-            </div>
-            <div class="p-4 flex-grow overflow-auto">
-                <img id="modal-image" src="" alt="Full-size astrophotography image" class="w-full h-auto object-contain max-h-[75vh] rounded-lg">
-            </div>
-            <div class="p-4 bg-gray-900/50 border-t border-gray-700">
-                 <button onclick="closeModal()" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition">Close</button>
-            </div>
+<script>
+(async function(){
+  // Utility: parse owner/repo from GitHub Pages page URL
+  function detectOwnerRepo(){
+    const host = location.hostname; // e.g. nmbrs1.github.io
+    const path = location.pathname.replace(/^\/|\/$/g,'').split('/');
+    let owner = null, repo = null;
+    if(host.endsWith('github.io')){
+      owner = host.split('.')[0];
+      if(path.length && path[0] !== ''){
+        repo = path[0];
+      } else {
+        // user pages repo == owner.github.io
+        repo = owner + '.github.io';
+      }
+    } else {
+      // fallback: if user is previewing locally, ask user in console:
+      owner = prompt('Enter your GitHub username (owner):') || '';
+      repo  = prompt('Enter your repository name (repo):') || '';
+    }
+    return {owner, repo};
+  }
+
+  const {owner, repo} = detectOwnerRepo();
+  if(!owner || !repo){
+    document.getElementById('status').textContent = 'Repo detection failed. Open this page from GitHub Pages or run locally and provide owner/repo.';
+    return;
+  }
+
+  const apiBase = `https://api.github.com/repos/${owner}/${repo}/contents`;
+  const rawBase = `https://raw.githubusercontent.com/${owner}/${repo}/main`; // assume main branch for raw files
+
+  const state = {folders:[], currentFolder:null, files:[], currentIndex:-1, zoom:1};
+
+  const foldersEl = document.getElementById('folders');
+  const gridEl = document.getElementById('grid');
+  const statusEl = document.getElementById('status');
+  const breadcrumbsEl = document.getElementById('breadcrumbs');
+  const viewerEl = document.getElementById('viewer');
+  const previewPanel = document.getElementById('previewPanel');
+  const previewTitle = document.getElementById('previewTitle');
+  const previewDate = document.getElementById('previewDate');
+
+  document.getElementById('folderFilter').addEventListener('input', e=>{
+    renderFolders(e.target.value.trim());
+  });
+
+  // Controls
+  document.getElementById('zoomIn').addEventListener('click', ()=>setZoom(state.zoom * 1.25));
+  document.getElementById('zoomOut').addEventListener('click', ()=>setZoom(state.zoom / 1.25));
+  document.getElementById('fitBtn').addEventListener('click', ()=>setZoom(1));
+  document.getElementById('prevBtn').addEventListener('click', ()=>navigate(-1));
+  document.getElementById('nextBtn').addEventListener('click', ()=>navigate(1));
+  document.getElementById('openRaw').addEventListener('click', ()=>{
+    if(state.currentIndex >= 0) window.open(state.files[state.currentIndex].raw, '_blank');
+  });
+
+  window.addEventListener('keydown', (e)=>{
+    if(e.key === 'ArrowLeft') navigate(-1);
+    if(e.key === 'ArrowRight') navigate(1);
+    if(e.key === 'Escape'){ /* future: close */ }
+  });
+
+  function setStatus(s){ statusEl.textContent = s; }
+
+  // Fetch and show root contents
+  async function fetchContents(path=''){
+    setStatus('fetching contents...');
+    const url = apiBase + (path ? '/' + encodeURIComponent(path) : '');
+    const res = await fetch(url);
+    if(res.status === 404){
+      setStatus('Repo path not found: ' + path);
+      return [];
+    }
+    if(res.status === 403){
+      setStatus('API rate limited or access denied. Try adding a personal token or wait a bit.');
+      return [];
+    }
+    const data = await res.json();
+    return data;
+  }
+
+  function sortFolders(list){
+    return list.sort((a,b)=>{
+      const A = a.name.toUpperCase(), B = b.name.toUpperCase();
+      if(A < B) return -1; if(A > B) return 1; return 0;
+    });
+  }
+
+  async function loadRoot(){
+    const data = await fetchContents('');
+    if(!Array.isArray(data)){
+      setStatus('Unexpected GitHub API response');
+      return;
+    }
+    // Filter directories only
+    const dirs = data.filter(x => x.type === 'dir').map(x => ({name: x.name, path: x.path}));
+    state.folders = sortFolders(dirs);
+    renderFolders();
+    setStatus(`Found ${state.folders.length} folders`);
+    // Optionally auto-open first folder
+    if(state.folders.length) {
+      // do not auto-open to let user choose — but you can uncomment next line:
+      // openFolder(state.folders[0].path);
+    }
+  }
+
+  function renderFolders(filter=''){
+    foldersEl.innerHTML = '';
+    const list = state.folders.filter(f => !filter || f.name.toLowerCase().includes(filter.toLowerCase()));
+    if(list.length===0){
+      foldersEl.innerHTML = `<div style="padding:12px;color:var(--muted)">No folders match.</div>`;
+      return;
+    }
+    for(const f of list){
+      const el = document.createElement('div');
+      el.className = 'folder';
+      if(state.currentFolder && state.currentFolder === f.path) el.classList.add('active');
+      el.innerHTML = `<div class="icondir">${escapeHtml(f.name.slice(0,2))}</div><div style="flex:1"><div style="font-weight:600;color:#dfefff">${escapeHtml(f.name)}</div><div class="small" style="margin-top:2px;color:var(--muted)">${escapeHtml(f.path)}</div></div>`;
+      el.onclick = ()=>openFolder(f.path, f.name);
+      foldersEl.appendChild(el);
+    }
+  }
+
+  async function openFolder(path, name){
+    state.currentFolder = path;
+    renderFolders(document.getElementById('folderFilter').value.trim());
+    breadcrumbsEl.textContent = `/${path}`;
+    setStatus('loading folder ' + path + ' ...');
+    gridEl.innerHTML = '';
+    const data = await fetchContents(path);
+    if(!Array.isArray(data)){
+      setStatus('Failed to load folder contents');
+      return;
+    }
+    // Filter jpg/jpeg files
+    const imgs = data.filter(x => x.type === 'file' && /\.(jpe?g|png)$/i.test(x.name))
+                     .map(x => ({
+                       name: x.name,
+                       path: x.path,
+                       raw: `https://raw.githubusercontent.com/${owner}/${repo}/main/${x.path}`,
+                       size: x.size,
+                       date: extractDateFromName(x.name)
+                     }));
+    imgs.sort((a,b)=> (b.date || '').localeCompare(a.date || '') || a.name.localeCompare(b.name));
+    state.files = imgs;
+    state.currentIndex = imgs.length ? 0 : -1;
+    renderFiles();
+    setStatus(`${imgs.length} image(s)`);
+    if(imgs.length) previewImage(0); else clearPreview();
+  }
+
+  function renderFiles(){
+    gridEl.innerHTML = '';
+    if(state.files.length === 0){
+      gridEl.innerHTML = `<div style="padding:16px;color:var(--muted)">No JPG/PNG files found in this folder.</div>`;
+      return;
+    }
+    for(let i=0;i<state.files.length;i++){
+      const f = state.files[i];
+      const card = document.createElement('div');
+      card.className = 'file-card';
+      card.onclick = ()=> previewImage(i);
+      card.innerHTML = `
+        <div class="thumb"><img loading="lazy" alt="${escapeHtml(f.name)}" src="${f.raw}"></div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="name">${escapeHtml(f.name)}</div>
+          <div class="meta"><div class="small">${f.date || 'unknown date'}</div><div class="small">${(f.size/1024|0)} KB</div></div>
         </div>
-    </div>
+      `;
+      gridEl.appendChild(card);
+    }
+  }
 
-    <script>
-        // --- CONFIGURATION ---
-        // IMPORTANT: Replace these with your GitHub username and repository name.
-        const GITHUB_USERNAME = "nmbrs1";
-        const GITHUB_REPO = "astro";
-        // --- END CONFIGURATION ---
+  function clearPreview(){
+    previewPanel.setAttribute('aria-hidden','true');
+    viewerEl.innerHTML = '<div class="muted">Select an image to preview</div>';
+    previewTitle.textContent = '';
+    previewDate.textContent = '';
+  }
 
-        const API_URL = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/images`;
+  function setZoom(z){
+    state.zoom = Math.max(0.25, Math.min(8, z));
+    const img = viewerEl.querySelector('img');
+    if(img) img.style.transform = `scale(${state.zoom})`;
+  }
 
-        // DOM Elements
-        const fileExplorer = document.getElementById('file-explorer');
-        const loader = document.getElementById('loader');
-        const errorMessage = document.getElementById('error-message');
-        const errorText = document.getElementById('error-text');
-        const breadcrumbs = document.getElementById('breadcrumbs');
-        
-        // Modal Elements
-        const modal = document.getElementById('image-modal');
-        const modalImage = document.getElementById('modal-image');
-        const modalHeader = document.getElementById('modal-header');
+  function navigate(delta){
+    if(state.files.length === 0) return;
+    let idx = state.currentIndex;
+    if(idx < 0) idx = 0;
+    idx = (idx + delta + state.files.length) % state.files.length;
+    previewImage(idx);
+    // scroll thumbnail into view
+    const cards = gridEl.querySelectorAll('.file-card');
+    if(cards[idx]) cards[idx].scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
 
-        let allImages = []; // To store the fetched image data
+  function previewImage(index){
+    const f = state.files[index];
+    if(!f) return;
+    state.currentIndex = index;
+    previewPanel.removeAttribute('aria-hidden');
+    previewTitle.textContent = f.name;
+    previewDate.textContent = f.date ? `Date: ${f.date}` : 'Date: unknown';
+    viewerEl.innerHTML = '';
+    const img = document.createElement('img');
+    img.alt = f.name;
+    img.src = f.raw;
+    img.onload = ()=>{ setZoom(1); };
+    img.onerror = ()=>{ viewerEl.innerHTML = '<div class="muted">Failed to load image.</div>'; };
+    viewerEl.appendChild(img);
+    // update raw button link via click
+    document.getElementById('openRaw').onclick = ()=> window.open(f.raw, '_blank');
+  }
 
-        /**
-         * Parses a filename to extract catalogue, number, and date.
-         * @param {string} filename - The name of the image file.
-         * @returns {object|null} An object with details or null if no match.
-         */
-        function parseFilename(filename) {
-            // Regex for: catalogue_number_date(YYYY-MM-DD).jpg
-            const datePattern = /^(NGC|M|IC)_(\d+)_(\d{4}-\d{2}-\d{2})\.jpg$/i;
-            // Regex for: catalogue_number.jpg
-            const simplePattern = /^(NGC|M|IC)(\d+)\.jpg$/i;
-            // Regex for: stretched.jpg or other single-name files
-            const miscPattern = /^([a-zA-Z0-9_-]+)\.jpg$/i;
+  function extractDateFromName(name){
+    // find first YYYY-MM-DD pattern
+    const m = name.match(/(20\d{2}-\d{2}-\d{2})/);
+    if(m) return m[1];
+    // try YYYYMMDD
+    const m2 = name.match(/(20\d{2})(\d{2})(\d{2})/);
+    if(m2) return `${m2[1]}-${m2[2]}-${m2[3]}`;
+    return null;
+  }
 
-            let match = filename.match(datePattern);
-            if (match) {
-                return { catalogue: match[1].toUpperCase(), number: match[2], date: match[3], name: filename };
-            }
+  // small escaping helper
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-            match = filename.match(simplePattern);
-            if (match) {
-                return { catalogue: match[1].toUpperCase(), number: match[2], date: null, name: filename };
-            }
+  // initial load
+  try{
+    await loadRoot();
+  }catch(err){
+    console.error(err);
+    setStatus('Error: ' + (err.message || err));
+  }
 
-            match = filename.match(miscPattern);
-            if (match) {
-                // For files like "stretched.jpg", we'll put them in a "Misc" category
-                if (!["NGC", "M", "IC"].includes(match[1].toUpperCase())) {
-                     return { catalogue: 'Misc', number: match[1], date: null, name: filename };
-                }
-            }
-
-            return null; // Return null if the filename doesn't match any pattern
-        }
-
-        /**
-         * Fetches image data from the GitHub repository.
-         * It first tries the /images folder, and if that fails, falls back to the root directory.
-         */
-        async function fetchImages() {
-            if (GITHUB_USERNAME === "YOUR_USERNAME" || GITHUB_REPO === "YOUR_REPO_NAME") {
-                showError("Configuration needed!", "Please update the `GITHUB_USERNAME` and `GITHUB_REPO` variables in the HTML file with your details.");
-                return;
-            }
-            
-            loader.classList.remove('hidden');
-            fileExplorer.innerHTML = '';
-            errorMessage.classList.add('hidden');
-
-            try {
-                // First, try to fetch from the 'images' subdirectory
-                let response = await fetch(API_URL);
-                
-                // **FIX:** If the 'images' directory is not found (404), try the root directory as a fallback.
-                if (response.status === 404) {
-                    console.warn("'images' folder not found. Trying repository root directory instead.");
-                    const rootApiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/`;
-                    response = await fetch(rootApiUrl);
-                }
-
-                if (!response.ok) {
-                    throw new Error(`GitHub API Error: ${response.status} ${response.statusText}. Could not access repository content. Is the repository public?`);
-                }
-                const data = await response.json();
-                
-                if (!Array.isArray(data)) {
-                    throw new Error("Could not find a valid list of files in the repository.");
-                }
-
-                allImages = data
-                    .filter(item => item.type === 'file' && item.name.toLowerCase().endsWith('.jpg'))
-                    .map(item => {
-                        const parsed = parseFilename(item.name);
-                        if (parsed) {
-                            return { ...parsed, url: item.download_url };
-                        }
-                        return null;
-                    })
-                    .filter(Boolean); // Remove null entries for non-matching filenames
-
-                if (allImages.length === 0) {
-                    showError("No compatible images found.", "Make sure your .jpg files are in the 'images' folder (or the repository root) and have filenames like 'M31.jpg' or 'NGC_1300_2023-01-01.jpg'.");
-                    return; // Stop execution if no images are found
-                }
-
-                renderHomeView();
-
-            } catch (error) {
-                console.error("Failed to fetch images:", error);
-                showError("Failed to load images.", error.message);
-            } finally {
-                loader.classList.add('hidden');
-            }
-        }
-
-        /**
-         * Renders the main view with catalogue folders.
-         */
-        function renderHomeView() {
-            fileExplorer.innerHTML = '';
-            updateBreadcrumbs();
-
-            const catalogues = [...new Set(allImages.map(img => img.catalogue))];
-            catalogues.sort(); // Sort catalogues alphabetically
-
-            catalogues.forEach(catalogue => {
-                const folderEl = createFolderElement(catalogue);
-                fileExplorer.appendChild(folderEl);
-            });
-        }
-        
-        /**
-         * Renders the view for a specific catalogue, showing image files.
-         * @param {string} catalogue - The catalogue name (e.g., 'NGC').
-         */
-        function renderCatalogueView(catalogue) {
-            fileExplorer.innerHTML = '';
-            updateBreadcrumbs(catalogue);
-
-            const imagesInCatalogue = allImages.filter(img => img.catalogue === catalogue);
-
-            if (imagesInCatalogue.length === 0) {
-                fileExplorer.innerHTML = `<p class="col-span-full text-center text-gray-400">No images found in this catalogue.</p>`;
-                return;
-            }
-
-            imagesInCatalogue.sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
-
-            imagesInCatalogue.forEach(image => {
-                const fileEl = createFileElement(image);
-                fileExplorer.appendChild(fileEl);
-            });
-        }
-
-        /**
-         * Creates an HTML element for a folder.
-         * @param {string} name - The name of the folder.
-         * @returns {HTMLElement} The folder element.
-         */
-        function createFolderElement(name) {
-            const div = document.createElement('div');
-            div.className = 'text-center cursor-pointer group';
-            div.onclick = () => renderCatalogueView(name);
-            div.innerHTML = `
-                <div class="relative w-24 h-24 mx-auto">
-                    <svg class="folder-icon text-blue-400 group-hover:text-blue-300 transition-colors duration-200" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path></svg>
-                </div>
-                <p class="mt-2 text-sm font-medium truncate group-hover:text-white">${name}</p>
-            `;
-            return div;
-        }
-
-        /**
-         * Creates an HTML element for an image file.
-         * @param {object} image - The image data object.
-         * @returns {HTMLElement} The file element.
-         */
-        function createFileElement(image) {
-            const div = document.createElement('div');
-            div.className = 'text-center cursor-pointer group';
-            div.onclick = () => openModal(image);
-
-            let displayName = image.catalogue === 'Misc' ? image.number : `${image.catalogue}${image.number}`;
-
-            div.innerHTML = `
-                <div class="relative file-icon mx-auto bg-gray-800 rounded-lg overflow-hidden border-2 border-gray-700 group-hover:border-blue-500 transition-all duration-200 shadow-lg flex items-center justify-center">
-                    <img src="${image.url}" alt="${displayName}" class="w-full h-full object-cover" loading="lazy">
-                </div>
-                <p class="mt-2 text-sm font-medium truncate group-hover:text-white">${displayName}</p>
-                ${image.date ? `<p class="text-xs text-gray-400">${image.date}</p>` : ''}
-            `;
-            return div;
-        }
-
-        /**
-         * Updates the breadcrumb navigation.
-         * @param {string|null} currentFolder - The currently viewed folder.
-         */
-        function updateBreadcrumbs(currentFolder = null) {
-            if (currentFolder) {
-                breadcrumbs.innerHTML = `<span class="cursor-pointer hover:text-white" onclick="renderHomeView()">/</span> <span class="text-gray-500">/</span> <span class="text-white">${currentFolder}</span>`;
-            } else {
-                breadcrumbs.innerHTML = `<span class="cursor-pointer hover:text-white" onclick="renderHomeView()">/</span>`;
-            }
-        }
-        
-        /**
-         * Displays an error message in the UI.
-         * @param {string} title - The main error title.
-         * @param {string} message - The detailed error message.
-         */
-        function showError(title, message) {
-            errorText.innerHTML = `<strong>${title}</strong><br>${message}`;
-            errorMessage.classList.remove('hidden');
-        }
-
-        /**
-         * Opens the modal to show a full-size image.
-         * @param {object} image - The image data object.
-         */
-        function openModal(image) {
-            let displayName = image.catalogue === 'Misc' ? image.number : `${image.catalogue}${image.number}`;
-            modalHeader.textContent = displayName;
-            modalImage.src = image.url;
-            modal.classList.remove('opacity-0', 'pointer-events-none');
-            modal.querySelector('.modal-content').classList.remove('scale-95');
-        }
-
-        /**
-         * Closes the image modal.
-         */
-        function closeModal() {
-            modal.classList.add('opacity-0', 'pointer-events-none');
-            modal.querySelector('.modal-content').classList.add('scale-95');
-            modalImage.src = ''; // Clear src to stop loading
-        }
-
-        // Close modal on escape key press
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeModal();
-            }
-        });
-
-        // Close modal on background click
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                closeModal();
-            }
-        });
-
-        // Initial fetch of images when the page loads
-        document.addEventListener('DOMContentLoaded', fetchImages);
-    </script>
-
+})();
+</script>
 </body>
 </html>
