@@ -212,15 +212,16 @@
   }
 
   async function openFolder(path, name){
-    state.currentFolder = path;
-    renderFolders(document.getElementById('folderFilter').value.trim());
-    breadcrumbsEl.textContent = `/${path}`;
-    setStatus('loading folder ' + path + ' ...');
-    gridEl.innerHTML = '';
-    const data = await fetchContents(path);
-    if(!Array.isArray(data)){
-      setStatus('Failed to load folder contents');
-      return;
+imgs.sort((a,b)=> {
+  // If both have dates, sort by date desc
+  if(a.date && b.date) return b.date.localeCompare(a.date);
+  // If only one has a date, that one comes first
+  if(a.date && !b.date) return -1;
+  if(!a.date && b.date) return 1;
+  // Otherwise, sort alphabetically
+  return a.name.localeCompare(b.name);
+});
+
     }
     // Filter jpg/jpeg files
     const imgs = data.filter(x => x.type === 'file' && /\.(jpe?g|png)$/i.test(x.name))
@@ -304,14 +305,14 @@
   }
 
   function extractDateFromName(name){
-    // find first YYYY-MM-DD pattern
+    // Try YYYY-MM-DD
     const m = name.match(/(20\d{2}-\d{2}-\d{2})/);
     if(m) return m[1];
-    // try YYYYMMDD
+    // Try YYYYMMDD
     const m2 = name.match(/(20\d{2})(\d{2})(\d{2})/);
     if(m2) return `${m2[1]}-${m2[2]}-${m2[3]}`;
-    return null;
-  }
+    return null; // no date found
+}
 
   // small escaping helper
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
