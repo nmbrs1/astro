@@ -1,45 +1,153 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Galaxy List</title>
-  <link rel="stylesheet" href="styles.css" />
-  <!-- fitsjs library -->
-  <script src="https://cdn.jsdelivr.net/npm/fitsjs@latest/dist/fits.min.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Astrophotography Gallery</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #eee;
+    margin: 20px;
+  }
+  h1 {
+    text-align: center;
+  }
+  ul {
+    list-style: none;
+    padding: 0;
+    max-width: 600px;
+    margin: auto;
+  }
+  li {
+    padding: 8px;
+    border-bottom: 1px solid #333;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+  }
+  li:hover {
+    background: #222;
+  }
+  img.thumb {
+    max-width: 60px;
+    margin-right: 10px;
+    border-radius: 4px;
+  }
+  #viewer {
+    max-width: 90vw;
+    max-height: 80vh;
+    display: block;
+    margin: 20px auto;
+    border-radius: 8px;
+    box-shadow: 0 0 10px #222;
+  }
+  .file-info {
+    display: flex;
+    flex-direction: column;
+  }
+  .name {
+    font-weight: bold;
+  }
+  .date {
+    font-size: 0.85em;
+    color: #999;
+  }
+</style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="title">Galaxy List</div>
-    <div class="info">Hosted: GitHub Pages — Place JPEG under <code>/fits/</code></div>
-  </header>
 
-  <main class="container">
-    <aside class="sidebar" id="sidebar">
-      <div class="folder-controls">
-        <button id="refreshBtn">Refresh list</button>
-        <input id="filterInput" placeholder="Filter folders..." />
-      </div>
-      <ul id="folders" class="folder-list" aria-label="Folders"></ul>
-    </aside>
+<h1>My Astrophotography Gallery</h1>
 
-    <section class="content">
-      <div class="breadcrumb" id="breadcrumb">Home</div>
+<ul id="fileList"></ul>
 
-      <div class="files-area">
-        <ul id="files" class="file-list" aria-label="Files"></ul>
+<img id="viewer" style="display:none;" />
 
-        <div class="viewer-area">
-          <div id="viewerControls" class="viewer-controls">
-            <span id="fileInfo">No file loaded</span>
-          </div>
-          <!-- Canvas -->
-          <canvas id="fitsCanvas" style="width:100%; height:auto; background:black;"></canvas>
-        </div>
-      </div>
-    </section>
-  </main>
+<script>
+const images = [
+  "M31_2023-07-10.jpg",
+  "NGC1234.jpg",
+  "Andromeda_stretched.jpg"
+];
 
-  <script src="app.js"></script>
+// Parse filename for catalogue, date, suffix
+function parseFilename(filename) {
+  // Remove extension first
+  let name = filename.replace(/\.jpg$/i, "");
+  
+  // Regex to find date YYYY-MM-DD
+  const dateMatch = name.match(/\d{4}-\d{2}-\d{2}/);
+  let date = dateMatch ? dateMatch[0] : null;
+
+  // Remove date from name if present
+  if (date) {
+    name = name.replace(date, "").replace(/[_-]+$/, "");
+  }
+
+  // Split on underscore or dash remaining to find suffix
+  let parts = name.split(/[_-]/);
+  
+  // The first part is catalogue/galaxy name
+  let catalogue = parts[0];
+
+  // Suffix if any (e.g. 'stretched')
+  let suffix = parts.length > 1 ? parts.slice(1).join(" ") : null;
+
+  return {catalogue, date, suffix};
+}
+
+const fileList = document.getElementById("fileList");
+const viewer = document.getElementById("viewer");
+
+images.forEach(filename => {
+  const li = document.createElement("li");
+
+  // Thumbnail
+  const thumb = document.createElement("img");
+  thumb.src = "images/" + filename;
+  thumb.className = "thumb";
+  li.appendChild(thumb);
+
+  // File info div
+  const infoDiv = document.createElement("div");
+  infoDiv.className = "file-info";
+
+  const {catalogue, date, suffix} = parseFilename(filename);
+
+  // Catalogue / galaxy name
+  const nameElem = document.createElement("div");
+  nameElem.className = "name";
+  nameElem.textContent = catalogue;
+  infoDiv.appendChild(nameElem);
+
+  // Date if present
+  if (date) {
+    const dateElem = document.createElement("div");
+    dateElem.className = "date";
+    dateElem.textContent = `Date: ${date}`;
+    infoDiv.appendChild(dateElem);
+  }
+
+  // Suffix if present
+  if (suffix) {
+    const suffixElem = document.createElement("div");
+    suffixElem.className = "date";
+    suffixElem.textContent = `Note: ${suffix}`;
+    infoDiv.appendChild(suffixElem);
+  }
+
+  li.appendChild(infoDiv);
+
+  li.onclick = () => {
+    viewer.src = "images/" + filename;
+    viewer.style.display = "block";
+    viewer.scrollIntoView({behavior: "smooth"});
+  };
+
+  fileList.appendChild(li);
+});
+</script>
+
 </body>
 </html>
