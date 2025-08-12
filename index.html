@@ -144,6 +144,7 @@
   document.getElementById('openRaw').addEventListener('click', ()=>{
     if(state.currentIndex >= 0) window.open(state.files[state.currentIndex].raw, '_blank');
   });
+  document.getElementById('openFits').addEventListener('click', ()=>{window.open(state.files[state.currentIndex].raw, '_blank')});
 
   window.addEventListener('keydown', (e)=>{
     if(e.key === 'ArrowLeft') navigate(-1);
@@ -224,7 +225,7 @@
       return;
     }
     // Filter jpg/jpeg files
-    const imgs = data.filter(x => x.type === 'file' && /\.(jpe?g|png)$/i.test(x.name))
+    const imgs = data.filter(x => x.type === 'file' && /\.(jpe?g|png|fits?)$/i.test(x.name))
                      .map(x => ({
                        name: x.name,
                        path: x.path,
